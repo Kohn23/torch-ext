@@ -1,5 +1,5 @@
 # Nested build directory
-/build*
+**/build
 # editor settings
 .vscode
 # Python cache files

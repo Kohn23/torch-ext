@@ -1,39 +1,45 @@
-CXX = g++
 NVCC = nvcc
+# Suppress deprecation warnings for Thrust and CUB when compiling with newer CUDA versions
+NVCC_FLAGS = -std=c++17 -O3 -arch=native -DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT -DCUB_IGNORE_DEPRECATED_CPP_DIALECT
+INCLUDES = -I. -I./common
+LDLIBS = -lcublas -lcusolver -lcurand
 
-CXXFLAGS = -std=c++17 -O2 -Wall
-NVCCFLAGS = -std=c++17 -O2 -arch=native
+OBJDIR = build
+TESTDIR = tests
 
-BUILD_DIR = build
-TARGET = $(BUILD_DIR)/test_qbmatmul
+ifeq ($(OS),Windows_NT)
+    OBJEXT = .obj
+else
+    OBJEXT = .o
+    
+endif
 
-CU_SRC = qbmatmul.cu
-CPP_SRC = tests/test_qbmatmul.cpp
-
-CU_OBJ = $(BUILD_DIR)/qbmatmul.o
-CPP_OBJ = $(BUILD_DIR)/test_qbmatmul.o
-
-HEADS = kernel.h qbmatmul.h utils.h
+RM_CMD   = rm -rf
+MKDIR_P  = mkdir -p
 
 
-all: $(BUILD_DIR) $(TARGET)
+SRCS := qbmatmul.cu $(wildcard $(TESTDIR)/*.cu) $(filter-out common/tests/%,$(wildcard common/**/*.cu))
 
-$(BUILD_DIR):
-	mkdir -p $@
+OBJECTS := $(patsubst %.cu,$(OBJDIR)/%$(OBJEXT),$(SRCS))
 
-$(TARGET): $(CU_OBJ) $(CPP_OBJ)
-	$(NVCC) -o $@ $^ $(NVCCFLAGS)
+DEPS := $(addsuffix .d,$(OBJECTS))
+-include $(DEPS)
 
-$(CU_OBJ): $(CU_SRC) $(HEADS) | $(BUILD_DIR)
-	$(NVCC) -c $< -o $@ $(NVCCFLAGS)
+TARGET = $(OBJDIR)/test_qbfactorization
 
-$(CPP_OBJ): $(CPP_SRC) $(HEADS) | $(BUILD_DIR)
-	$(CXX) -c $< -o $@ $(CXXFLAGS) -I.
+all: $(OBJDIR) $(TARGET)
+
+$(OBJDIR):
+	@$(MKDIR_P) $(OBJDIR)
+
+$(TARGET): $(OBJECTS)
+	$(NVCC) -o $@ $^ $(LDLIBS)
+
+$(OBJDIR)/%$(OBJEXT): %.cu | $(OBJDIR)
+	@$(MKDIR_P) $(dir $@)
+	$(NVCC) $(NVCC_FLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
-	rm -rf $(BUILD_DIR)
+	@$(RM_CMD) $(OBJDIR)
 
-run: $(TARGET)
-	./$(TARGET)
-
-.PHONY: all clean run
+.PHONY: all clean

@@ -7,3 +7,6 @@
 [submodule "third/flash-attention"]
 	path = third/flash-attention
 	url = https://github.com/Dao-AILab/flash-attention.git
+[submodule "ppopp/ops/csrc/common"]
+	path = ppopp/ops/csrc/common
+	url = https://github.com/Kohn23/cuda-commons.git

@@ -20,22 +20,13 @@ int qb_factorization(
     bool stop_condition_met = false;
     int final_rank = 0;
     
-    // 创建 A 的备份（用于列筛选时读取原始数据）
-    thrust::device_vector<double> d_A_backup(m * n);
-    CUDA_CHECK(cudaMemcpy(d_A_backup.data().get(), d_A_ptr, 
-                          m * n * sizeof(double), cudaMemcpyDeviceToDevice));
-    double* d_A_backup_ptr = thrust::raw_pointer_cast(d_A_backup.data());
+    int e_panel_width = 64; 
     
-    // 用于存储过滤后的 A 矩阵
-    double* d_A_filtered_ptr = d_A_ptr;  // 原地更新
-    
-    int block_size = 64;  // 分块大小，可根据性能调整
-    
-    for (int j = 0; j < (n + block_size - 1) / block_size; ++j) {
-        int col_start = j * block_size;
-        int row_start = j * block_size;
+    for (int j = 0; j < (n + e_panel_width - 1) / e_panel_width; ++j) {
+        int col_start = j * e_panel_width;
+        int row_start = j * e_panel_width;
         int panel_height = m - row_start;
-        int panel_width = std::min(block_size, n - col_start);
+        int panel_width = std::min(e_panel_width, n - col_start);
         panel_width = std::min(panel_width, k - accumulated_rank);
         
         if (panel_height <= 0 || panel_width <= 0) break;
@@ -258,7 +249,7 @@ int qb_factorization(
         final_rank = accumulated_rank;
     }
     
-    printf("\n========= Rank Revealing QR Complete =========\n");
+    printf("\n========= QB Complete =========\n");
     printf("Target rank: %d, Actual rank: %d\n", k, final_rank);
     printf("Selected columns: %zu\n", h_keep_cols_global.size());
     printf("===============================================\n");
